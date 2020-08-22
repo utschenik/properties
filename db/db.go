@@ -6,8 +6,11 @@ import (
 	"github.com/couchbase/gocb"
 )
 
-// InitClusterGetCollection initializes the clust for you, and returns the collection from the bucket
-func InitClusterGetCollection() *gocb.Collection {
+// Collection is a reference to the bucket collection
+var Collection *gocb.Collection
+
+// InitClusterGetCollection initializes the cluster for you
+func InitClusterGetCollection() {
 	cluster, err := gocb.Connect("localhost", gocb.ClusterOptions{
 		Username: "Administrator",
 		Password: "1234,56Q",
@@ -23,7 +26,5 @@ func InitClusterGetCollection() *gocb.Collection {
 		panic(err)
 	}
 
-	collection := bucket.DefaultCollection()
-
-	return collection
+	Collection = bucket.DefaultCollection()
 }
