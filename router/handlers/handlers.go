@@ -2,8 +2,10 @@ package handlers
 
 import (
 	"encoding/json"
+	"fmt"
 	"net/http"
 
+	"github.com/couchbase/gocb"
 	"github.com/go-chi/chi"
 	"github.com/utschenik/PropertiesApi/db"
 )
@@ -17,23 +19,49 @@ type property struct {
 	Languages []languageItem `json:"languages"`
 }
 
-// GetAllProperties returns all propeties from the bucket
-func GetAllProperties(w http.ResponseWriter, r *http.Request) {
+// GetPropertiesBySection returns all propeties from the bucket for the section
+func GetPropertiesBySection(w http.ResponseWriter, r *http.Request) {
+	query := fmt.Sprintf("SELECT properties.* FROM properties WHERE section = '%s';", chi.URLParam(r, "section"))
+	rows, err := db.Cluster.Query(query, &gocb.QueryOptions{})
+
+	if err != nil {
+		panic(err)
+	}
+
+	var res []property
+	for rows.Next() {
+		var row property
+		err := rows.Row(&row)
+		if err != nil {
+			panic(err)
+		}
+		res = append(res, row)
+	}
+
+	err = rows.Err()
+	if err != nil {
+		panic(err)
+	}
+
+	js, err := json.Marshal(res)
+
+	w.Header().Set("Content-Type", "application/json")
+	w.Write(js)
 }
 
-// GetPropertiesBySectionAndName returns all properties from a section
-func GetPropertiesBySectionAndName(w http.ResponseWriter, r *http.Request) {
+// GetPropertyByName returns all properties from a section
+func GetPropertyByName(w http.ResponseWriter, r *http.Request) {
 	res, err := db.Collection.Get(chi.URLParam(r, "name"), nil)
 	if err != nil {
 		panic(err)
 	}
 
-	var myProperty property
-	err = res.Content(&myProperty)
+	var foundProperty property
+	err = res.Content(&foundProperty)
 	if err != nil {
 		panic(err)
 	}
-	json, err := json.Marshal(myProperty)
+	json, err := json.Marshal(foundProperty)
 	if err != nil {
 		panic(err)
 	}
@@ -43,17 +71,11 @@ func GetPropertiesBySectionAndName(w http.ResponseWriter, r *http.Request) {
 
 // CreatePropertyForSection creates a new property for a section
 func CreatePropertyForSection(w http.ResponseWriter, r *http.Request) {
-	newLanguageItem := languageItem{Text: "nt", Language: "ger"}
+	newLanguageItem := languageItem{Text: "nt12312323", Language: "spa"}
 	newLanguages := []languageItem{newLanguageItem}
 	newProperty := property{Section: chi.URLParam(r, "section"), Languages: newLanguages}
 	_, err := db.Collection.Insert(chi.URLParam(r, "name"), &newProperty, nil)
 	if err != nil {
 		panic(err)
 	}
-}
-
-// GetPropertiesBySectionAndLanguage returns properties specified on language and section
-func GetPropertiesBySectionAndLanguage(w http.ResponseWriter, r *http.Request) {
-	var param string = chi.URLParam(r, "language")
-	var param1 string = chi.URLParam(r, "section")
 }
